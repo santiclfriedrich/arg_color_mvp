@@ -1,13 +1,12 @@
 import { fetchProductsFromElit } from "../services/elitAPI.js";
-import { formatProductList } from "../models/productModel.js";
+import { formatElitProducts } from "../models/productModel.js";
 
-// Controlador principal
 export async function getProducts(req, res) {
   const { q } = req.query;
 
   try {
-    const elitData = await fetchProductsFromElit(q);
-    const formatted = formatProductList(elitData);
+    const rawProducts = await fetchProductsFromElit(q);
+    const formatted = formatElitProducts(rawProducts);
     res.json(formatted);
   } catch (error) {
     console.error("Error en getProducts:", error.message);
@@ -15,15 +14,24 @@ export async function getProducts(req, res) {
   }
 }
 
-// Controlador para buscar por SKU
+// ✅ Nuevo controlador: búsqueda por SKU
 export async function getProductBySku(req, res) {
   const { sku } = req.params;
 
   try {
-    const elitData = await fetchProductsFromElit(sku);
-    const formatted = formatProductList(elitData);
-    res.json(formatted[0] || { message: "Producto no encontrado" });
+    const rawProducts = await fetchProductsFromElit(sku);
+    const formatted = formatElitProducts(rawProducts);
+
+    // Filtramos el producto exacto si viene un array
+    const product = formatted.find((p) => p.sku === sku);
+
+    if (product) {
+      res.json(product);
+    } else {
+      res.status(404).json({ message: "Producto no encontrado" });
+    }
   } catch (error) {
-    res.status(500).json({ error: "Error al buscar producto por SKU" });
+    console.error("Error en getProductBySku:", error.message);
+    res.status(500).json({ error: "Error al obtener producto por SKU" });
   }
 }
