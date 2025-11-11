@@ -17,3 +17,4 @@ export function formatElitProducts(rawProducts) {
     provider: "Elit",
   }));
 }
+
