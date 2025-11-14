@@ -1,10 +1,10 @@
 import express from "express";
-import { getProducts, getProductBySku } from "../controllers/productController.js";
+import { getAllProducts, getProductBySku } from "../controllers/productController.js";
 
 const router = express.Router();
 
 // GET /api/products?q=nombre
-router.get("/", getProducts);
+router.get("/", getAllProducts);
 
 // GET /api/products/:sku
 router.get("/:sku", getProductBySku);
