@@ -1,6 +1,6 @@
 // src/controllers/productController.js
 
-import { fetchProductsFromElit } from "../services/elitAPI.js";
+import { fetchProductsFromElit, fetchProductBySkuFromElit } from "../services/elitAPI.js";
 import { fetchProductsFromMasnet } from "../services/masnetAPI.js";
 import { fetchProductsFromCorcisa } from "../services/corcisaAPI.js";
 import { fetchProductsFromNucleo } from "../services/nucleoAPI.js";
@@ -14,17 +14,16 @@ import {
 
 import { mergeResults } from "../utils/mergeResults.js";
 
-console.log("DEBUG → fetchProductsFromNucleo:", typeof fetchProductsFromNucleo);
 
-
+// ===================================================================
+// BUSQUEDA GENERAL: nombre + codigo_producto + partNumber
+// ===================================================================
 export async function getAllProducts(req, res) {
   const { q } = req.query;
 
   try {
     console.log(`🔎 Buscando productos: "${q}" ...`);
     const start = Date.now();
-
-    console.log("DEBUG → Promise.all listo para llamar a Núcleo");
 
     // Llamadas simultáneas
     const [elit, masnet, corcisa, nucleo] = await Promise.allSettled([
@@ -33,10 +32,8 @@ export async function getAllProducts(req, res) {
       fetchProductsFromCorcisa(q),
       fetchProductsFromNucleo(q),
     ]);
-    console.log("DEBUG → Luego de Promise.allSettled. Estado Núcleo:", nucleo.status);
 
-
-    // NORMALIZACIÓN POR PROVEEDOR
+    // Normalización
     const elitData =
       elit.status === "fulfilled" ? formatElitProducts(elit.value) : [];
 
@@ -46,29 +43,34 @@ export async function getAllProducts(req, res) {
     const corcisaData =
       corcisa.status === "fulfilled" ? formatCorcisaProducts(corcisa.value) : [];
 
-    const nucleoRaw = nucleo.status === "fulfilled" ? nucleo.value : [];
-    const nucleoData = Array.isArray(nucleoRaw)
-      ? formatNucleoProducts(nucleoRaw)
-      : [];
+    const nucleoData =
+      nucleo.status === "fulfilled"
+        ? formatNucleoProducts(nucleo.value)
+        : [];
 
-    // MERGE FINAL
-    const allProducts = mergeResults(
+    // MERGE
+    let allProducts = mergeResults(
       elitData,
       masnetData,
       corcisaData,
       nucleoData
     );
 
-    const elapsed = ((Date.now() - start) / 1000).toFixed(2);
+    // FILTRO unificado: nombre + SKU + codigo_producto + partNumber
+    if (q) {
+      const qLower = q.toLowerCase();
 
-    console.log(
-      `✅ Búsqueda completada en ${elapsed}s — ` +
-        `Elit: ${elitData.length}, ` +
-        `Masnet: ${masnetData.length}, ` +
-        `Corcisa: ${corcisaData.length}, ` +
-        `Nucleo: ${nucleoData.length}, ` +
-        `TOTAL: ${allProducts.length}`
-    );
+      allProducts = allProducts.filter((p) => {
+        return (
+          p.name?.toLowerCase().includes(qLower) ||
+          p.sku?.toLowerCase() === qLower ||
+          p.sku?.toLowerCase().includes(qLower)
+        );
+      });
+    }
+
+    const elapsed = ((Date.now() - start) / 1000).toFixed(2);
+    console.log(`✅ Búsqueda completada en ${elapsed}s — Total: ${allProducts.length}`);
 
     res.json(allProducts);
 
@@ -78,22 +80,56 @@ export async function getAllProducts(req, res) {
   }
 }
 
-// -------------------------------------------
-// Búsqueda por SKU (solo Elit por ahora)
-// -------------------------------------------
+
+// ===================================================================
+// BUSQUEDA EXACTA POR SKU: /api/products/:sku
+// ===================================================================
 export async function getProductBySku(req, res) {
   const { sku } = req.params;
+
   try {
-    const raw = await fetchProductsFromElit(sku);
+    const [elit, masnet, corcisa, nucleo] = await Promise.allSettled([
+      fetchProductBySkuFromElit(sku),
+      fetchProductsFromMasnet(sku),
+      fetchProductsFromCorcisa(sku),
+      fetchProductsFromNucleo(sku),
+    ]);
 
-    if (!raw || raw.length === 0)
-      return res.status(404).json({ message: "Producto no encontrado" });
+    const elitData =
+      elit.status === "fulfilled" && elit.value
+        ? formatElitProducts([elit.value])
+        : [];
 
-    const formatted = formatElitProducts(raw);
-    res.json(formatted[0]);
+    const masnetData =
+      masnet.status === "fulfilled"
+        ? formatMasnetProducts(masnet.value).filter(p => p.sku == sku)
+        : [];
+
+    const corcisaData =
+      corcisa.status === "fulfilled"
+        ? formatCorcisaProducts(corcisa.value).filter(p => p.sku == sku)
+        : [];
+
+    const nucleoData =
+      nucleo.status === "fulfilled"
+        ? formatNucleoProducts(nucleo.value).filter(p => p.sku == sku)
+        : [];
+
+    const finalResults = mergeResults(
+      elitData,
+      masnetData,
+      corcisaData,
+      nucleoData
+    );
+
+    if (finalResults.length === 0) {
+      return res.status(404).json({ message: `SKU ${sku} no encontrado en ningún proveedor` });
+    }
+
+    res.json(finalResults);
 
   } catch (error) {
-    console.error("Error en getProductBySku:", error.message);
+    console.error("❌ Error en getProductBySku:", error.message);
     res.status(500).json({ error: "Error al obtener producto por SKU" });
   }
 }

@@ -4,7 +4,7 @@ export function formatNucleoProducts(rawProducts = []) {
   if (!Array.isArray(rawProducts)) return [];
 
   return rawProducts.map((p) => ({
-    sku: p.codigo || "",
+    sku: p.partNumber || p.codigo || "",
     name: p.item_desc_0 || p.partNumber || "",
     brand: p.marca || "",
     price: Number(p.precioNeto_USD) || 0,

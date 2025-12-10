@@ -7,7 +7,7 @@ export function formatMasnetProducts(rawProducts) {
   if (!Array.isArray(rawProducts)) return [];
 
   return rawProducts.map((p) => ({
-    sku: p.codigo_producto || p.codigo_alfa || "",
+    sku: p.codigo_producto || "",
     name: p.nombre || "",
     brand: p.marca || "",
     price: Number(p.precio) || 0,
