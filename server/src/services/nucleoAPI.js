@@ -1,5 +1,4 @@
 // src/services/nucleoAPI.js
-
 import axios from "axios";
 import dotenv from "dotenv";
 dotenv.config();
@@ -7,10 +6,10 @@ dotenv.config();
 const LOGIN_URL = "https://api.gruponucleosa.com/Authentication/Login";
 const CATALOG_URL = "https://api.gruponucleosa.com/API_V1/GetCatalog";
 
-let cachedToken = null;
-let tokenExpiration = null;
-
-async function getNucleoToken() {
+// ================================
+// 🔵 LOGIN DIRECTO (SIN CACHE)
+// ================================
+async function loginNucleo() {
   try {
     const body = {
       id: Number(process.env.NUCLEO_ID),
@@ -19,50 +18,80 @@ async function getNucleoToken() {
     };
 
     const res = await axios.post(LOGIN_URL, body);
-
-    cachedToken = res.data;
-    tokenExpiration = Date.now() + 14 * 60 * 1000;
-
-    return cachedToken;
-
+    return res.data; // token directo
   } catch (err) {
-    console.error("❌ Error Token Núcleo:", err.response?.data || err.message);
+    console.error("❌ Núcleo login error:", err.response?.data || err.message);
     return null;
   }
 }
 
-async function getValidToken() {
-  if (!cachedToken || Date.now() > tokenExpiration) {
-    return await getNucleoToken();
-  }
-  return cachedToken;
+// ================================
+// 🔵 DETECCIÓN SIMPLE DE SKU
+// ================================
+function looksLikeSku(q = "") {
+  const t = q.trim();
+  return t && !t.includes(" ") && /\d/.test(t);
 }
 
+// ================================
+// 🔵 NORMALIZACIÓN DE TEXTO
+// ================================
+function normalize(text = "") {
+  return text
+    .toLowerCase()
+    .replace(/notebook|laptop|portátil/g, "note")
+    .replace(/\bnb\b/g, "note");
+}
+
+// ================================
+// 🔵 BÚSQUEDA PRINCIPAL
+// ================================
 export async function fetchProductsFromNucleo(query = "") {
   try {
-    const token = await getValidToken();
+    const token = await loginNucleo();
     if (!token) return [];
 
     const res = await axios.get(CATALOG_URL, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    let products = res.data || [];
+    let products = Array.isArray(res.data) ? res.data : [];
 
     if (!query) return products;
 
-    const q = query.toLowerCase();
+    const trimmed = query.trim();
+    const q = normalize(trimmed);
+    const isSkuSearch = looksLikeSku(trimmed);
 
-    products = products.filter((p) =>
-      p.item_desc_0?.toLowerCase().includes(q) ||
-      p.partNumber?.toLowerCase().includes(q) ||
-      p.codigo?.toLowerCase().includes(q)
+    console.log(
+      `🔵 [Núcleo] Buscando "${trimmed}" como ${isSkuSearch ? "SKU" : "nombre"}`
     );
 
+    products = products.filter((p) => {
+      const name = normalize(p.item_desc_0 || "");
+      const partNumber = (p.partNumber || "").toLowerCase();
+
+      // 🔍 SKU → partNumber
+      if (isSkuSearch) {
+        return (
+          partNumber === q ||
+          partNumber.includes(q)
+        );
+      }
+
+      // 🔍 Nombre → mínimo 3 caracteres
+      if (q.length < 3) return false;
+      return name.includes(q);
+    });
+
+    console.log(`🔵 [Núcleo] Resultados: ${products.length}`);
     return products;
 
   } catch (err) {
-    console.error("❌ Error consultando Núcleo:", err.response?.data || err.message);
+    console.error(
+      "❌ Error consultando Núcleo:",
+      err.response?.data || err.message
+    );
     return [];
   }
 }

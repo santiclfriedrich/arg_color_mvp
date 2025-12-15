@@ -5,105 +5,76 @@ dotenv.config();
 
 const BASE_URL = "https://corcisa.com.ar/api/v1/productos";
 
-// ================================
-// 🔵 CACHE EN MEMORIA
-// ================================
-let corcisaCache = [];
-let lastCacheTime = 0;
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
-
-// ================================
-// 🔵 SEGURIDAD: validar credenciales
-// ================================
-function validateCredentials() {
-  if (!process.env.CORCISA_USER_ID || !process.env.CORCISA_TOKEN) {
-    console.error("❌ Corcisa → Credenciales faltantes en .env");
-    return false;
-  }
-  return true;
+/**
+ * Detecta si el query parece un SKU
+ * Regla simple (igual a Elit):
+ * - no espacios
+ * - al menos un número
+ */
+function isSku(query = "") {
+  const q = query.trim();
+  return q && !q.includes(" ") && /\d/.test(q);
 }
 
-// ================================
-// 🔵 FETCH DE UNA SOLA PÁGINA (con error handling)
-// ================================
-async function fetchCorcisaPage(offset = 0) {
+/**
+ * 🔵 Búsqueda en Corcisa
+ * - Sin cache
+ * - POST correcto
+ * - SKU → codigo_producto
+ * - Nombre → nombre
+ */
+export async function fetchProductsFromCorcisa(query = "") {
   try {
-    const body = {
-      user_id: process.env.CORCISA_USER_ID,
-      token: process.env.CORCISA_TOKEN,
+    const { CORCISA_USER_ID, CORCISA_TOKEN } = process.env;
+
+    if (!CORCISA_USER_ID || !CORCISA_TOKEN) {
+      console.error("❌ Corcisa → Falta USER_ID o TOKEN");
+      return [];
+    }
+
+    const trimmed = query.trim();
+
+    // ----------------------------
+    // 🔵 Query params (filtros)
+    // ----------------------------
+    const params = {
+      limit: 100,
+      offset: 0,
     };
 
-    const params = { limit: 100, offset };
+    if (trimmed) {
+      if (isSku(trimmed)) {
+        params.codigo_producto = trimmed;
+      } else {
+        params.nombre = trimmed;
+      }
+    }
 
-    console.log(`🔵 [Corcisa] Descargando página offset=${offset}`);
+    // ----------------------------
+    // 🔵 Body de autenticación
+    // ----------------------------
+    const body = {
+      user_id: CORCISA_USER_ID,
+      token: CORCISA_TOKEN,
+    };
+
+    console.log("🔵 [Corcisa] POST filtros →", params);
 
     const res = await axios.post(BASE_URL, body, { params });
 
-    return Array.isArray(res.data?.resultado) ? res.data.resultado : [];
+    const results = Array.isArray(res.data?.resultado)
+      ? res.data.resultado
+      : [];
+
+    console.log(`🔵 [Corcisa] Resultados: ${results.length}`);
+
+    return results;
 
   } catch (err) {
-    console.error("❌ Error Corcisa (fetchCorcisaPage):", err.message);
-    return [];
-  }
-}
-
-// ================================
-// 🔵 DESCARGA COMPLETA DEL CATÁLOGO
-// ================================
-async function fetchFullCatalog() {
-  console.log("🔵 [Corcisa] Descargando catálogo completo...");
-
-  if (!validateCredentials()) return [];
-
-  let all = [];
-  let offset = 0;
-  let page = [];
-
-  do {
-    page = await fetchCorcisaPage(offset);
-    all = all.concat(page);
-    offset += 100;
-  } while (page.length === 100);
-
-  console.log("🔵 [Corcisa] Total productos descargados:", all.length);
-
-  corcisaCache = all;
-  lastCacheTime = Date.now();
-
-  return all;
-}
-
-// ================================
-// 🔵 FUNCIÓN PRINCIPAL CON CACHE
-// ================================
-export async function fetchProductsFromCorcisa(query = "") {
-  const now = Date.now();
-
-  // Refrescar cache si expiró
-  if (!lastCacheTime || now - lastCacheTime > CACHE_TTL || corcisaCache.length === 0) {
-    await fetchFullCatalog();
-  }
-
-  // Si sigue vacío → error de token o de API
-  if (corcisaCache.length === 0) {
-    console.warn("⚠️ [Corcisa] Catálogo vacío. Verificar token o API.");
-    return [];
-  }
-
-  if (!query) return corcisaCache;
-
-  const q = query.toLowerCase();
-
-  const filtered = corcisaCache.filter((p) => {
-    return (
-      p.nombre?.toLowerCase().includes(q) ||
-      p.codigo_producto?.toLowerCase() === q ||
-      p.codigo_producto?.toLowerCase().includes(q) ||
-      p.codigo_alfa?.toLowerCase().includes(q)
+    console.error(
+      "❌ Error Corcisa:",
+      err.response?.data || err.message
     );
-  });
-
-  console.log(`🔵 [Corcisa] Filtrados por '${query}': ${filtered.length}`);
-
-  return filtered;
+    return [];
+  }
 }
