@@ -1,0 +1,31 @@
+// src/store/productStore.js
+import { create } from "zustand";
+
+export const useProductStore = create((set, get) => ({
+  query: "",
+  loading: false,
+  products: [],
+  error: null,
+
+  setQuery: (q) => set({ query: q }),
+
+  fetchProducts: async () => {
+    const query = get().query;
+    if (!query || query.trim().length < 3) return;
+
+    set({ loading: true, error: null });
+
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/products?q=${encodeURIComponent(query)}`
+      );
+
+      if (!res.ok) throw new Error("Error backend");
+
+      const data = await res.json();
+      set({ products: data, loading: false });
+    } catch (err) {
+      set({ error: "Error al buscar productos", loading: false });
+    }
+  },
+}));
