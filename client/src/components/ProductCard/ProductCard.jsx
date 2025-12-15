@@ -16,8 +16,8 @@ export const ProductCard = ({ product, onClick }) => {
       hoverBorder: "hover:border-red-400",
     },
     PCArts: {
-      badge: "bg-gray-100 text-gray-800",
-      hoverBorder: "hover:border-gray-400",
+      badge: "bg-violet-100 text-violet-800",
+      hoverBorder: "hover:border-violet-400",
     },
     Masnet: {
       badge: "bg-blue-100 text-blue-800",
