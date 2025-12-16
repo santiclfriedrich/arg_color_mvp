@@ -37,18 +37,14 @@ const PROVIDER_STYLES = {
 export const ProductModal = ({ product, onClose }) => {
   const [copied, setCopied] = useState(false);
 
-  // 🔒 Hooks SIEMPRE antes de cualquier return
-  const providers = useMemo(() => {
-    if (!product) return [];
-    return product.providers && product.providers.length > 0
-      ? product.providers
-      : [product];
-  }, [product]);
+  // ⛔ hooks SIEMPRE arriba
+  const providers = useMemo(
+    () => product?.providers ?? (product ? [product] : []),
+    [product]
+  );
 
   const { best, ahorro } = useMemo(() => {
-    if (providers.length < 2) {
-      return { best: providers[0], ahorro: 0 };
-    }
+    if (providers.length < 2) return { best: providers[0], ahorro: 0 };
 
     const sorted = [...providers].sort((a, b) => a.price - b.price);
     const best = sorted[0];
@@ -66,15 +62,16 @@ export const ProductModal = ({ product, onClose }) => {
     product.image ||
     "https://via.placeholder.com/400x300?text=Sin+Imagen";
 
-  // 📋 Copiar SKU
+  const bestStyle =
+    PROVIDER_STYLES[best?.provider] || {
+      badge: "bg-gray-100 text-gray-700",
+      border: "border-gray-300",
+    };
+
   const handleCopySku = async () => {
-    try {
-      await navigator.clipboard.writeText(product.sku);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch (err) {
-      console.error("Error copiando SKU", err);
-    }
+    await navigator.clipboard.writeText(product.sku);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
 
   return (
@@ -82,11 +79,20 @@ export const ProductModal = ({ product, onClose }) => {
       <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
         {/* HEADER */}
         <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {/* 🏷 Proveedor ganador */}
+            {best && (
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${bestStyle.badge}`}
+              >
+                {best.provider}
+              </span>
+            )}
+
+            {/* 🏆 Mejor precio */}
             {best && (
               <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 flex items-center gap-1">
-                <Trophy size={14} />
-                Mejor precio
+                <Trophy size={14} /> Mejor precio
               </span>
             )}
           </div>
@@ -107,10 +113,6 @@ export const ProductModal = ({ product, onClose }) => {
               src={imageUrl}
               alt={product.name}
               className="max-h-80 object-contain"
-              onError={(e) => {
-                e.currentTarget.src =
-                  "https://via.placeholder.com/400x300?text=Sin+Imagen";
-              }}
             />
           </div>
 
@@ -123,27 +125,23 @@ export const ProductModal = ({ product, onClose }) => {
             {/* SKU */}
             <div className="flex items-center gap-2 mb-5">
               <span className="text-sm text-gray-600">SKU</span>
-              <span className="px-3 py-1 bg-gray-100 rounded-md font-mono text-sm">
+              <span className="px-3 py-1 bg-gray-100 rounded-md font-mono">
                 {product.sku}
               </span>
-              <button
-                onClick={handleCopySku}
-                className="p-1.5 rounded-md hover:bg-gray-100"
-              >
+              <button onClick={handleCopySku}>
                 {copied ? (
                   <Check size={16} className="text-green-600" />
                 ) : (
-                  <Copy size={16} className="text-gray-600" />
+                  <Copy size={16} />
                 )}
               </button>
             </div>
 
-            {/* MEJOR PRECIO */}
+            {/* PRECIO MEJOR */}
             {best && (
               <div className="mb-4 p-4 rounded-xl bg-green-50 border border-green-200">
                 <p className="text-sm text-green-700 flex items-center gap-1">
-                  <Trophy size={14} />
-                  Mejor precio disponible
+                  <Trophy size={14} /> Mejor precio disponible
                 </p>
                 <p className="text-3xl font-bold">
                   USD{" "}
