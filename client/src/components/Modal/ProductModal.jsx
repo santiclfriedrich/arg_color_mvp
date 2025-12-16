@@ -7,16 +7,14 @@ import { useState } from "react";
 const PROVIDER_STYLES = {
   Elit: "border-orange-500 text-orange-600",
   Nucleo: "border-red-500 text-red-600",
-  "Grupo Nucleo": "border-red-500 text-red-600",
   PCArts: "border-gray-500 text-gray-600",
   Masnet: "border-blue-500 text-blue-600",
   Corcisa: "border-sky-500 text-sky-600",
 };
 
 export const ProductModal = ({ product, onClose }) => {
+    const [copied, setCopied] = useState(false);
   if (!product) return null;
-
-  const [copied, setCopied] = useState(false);
 
   const providerStyle =
     PROVIDER_STYLES[product.provider] || "border-gray-300 text-gray-600";

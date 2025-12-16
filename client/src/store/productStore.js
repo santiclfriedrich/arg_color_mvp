@@ -24,7 +24,7 @@ export const useProductStore = create((set, get) => ({
 
       const data = await res.json();
       set({ products: data, loading: false });
-    } catch (err) {
+    } catch  {
       set({ error: "Error al buscar productos", loading: false });
     }
   },
