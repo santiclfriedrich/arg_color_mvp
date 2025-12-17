@@ -6,7 +6,7 @@ import {
   Trophy,
   TrendingDown,
 } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 
 /**
  * 🎨 Colores por proveedor

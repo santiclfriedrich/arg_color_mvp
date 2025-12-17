@@ -13,8 +13,14 @@ const BASE_URL = "https://corcisa.com.ar/api/v1/productos";
  */
 function isSku(query = "") {
   const q = query.trim();
-  return q && !q.includes(" ") && /\d/.test(q);
+  return (
+    q &&
+    !q.includes(" ") &&
+    /[0-9]/.test(q) &&
+    /[A-Z0-9/-]/i.test(q)
+  );
 }
+
 
 /**
  * 🔵 Búsqueda en Corcisa
@@ -45,10 +51,9 @@ export async function fetchProductsFromCorcisa(query = "") {
     if (trimmed) {
       if (isSku(trimmed)) {
         params.codigo_producto = trimmed;
-      } else {
-        params.nombre = trimmed;
-      }
+      } 
     }
+
 
     // ----------------------------
     // 🔵 Body de autenticación
