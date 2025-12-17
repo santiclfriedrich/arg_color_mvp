@@ -37,22 +37,27 @@ const PROVIDER_STYLES = {
 export const ProductModal = ({ product, onClose }) => {
   const [copied, setCopied] = useState(false);
 
-  // ⛔ hooks SIEMPRE arriba
-  const providers = useMemo(
-    () => product?.providers ?? (product ? [product] : []),
-    [product]
-  );
+  // ⛔ Hooks SIEMPRE arriba
+  const providers = useMemo(() => {
+    if (!product) return [];
+    return product.providers && product.providers.length > 0
+      ? product.providers
+      : [product];
+  }, [product]);
 
   const { best, ahorro } = useMemo(() => {
-    if (providers.length < 2) return { best: providers[0], ahorro: 0 };
+    if (providers.length < 2) {
+      return {
+        best: providers[0],
+        ahorro: 0,
+      };
+    }
 
     const sorted = [...providers].sort((a, b) => a.price - b.price);
-    const best = sorted[0];
-    const worst = sorted[sorted.length - 1];
-
     return {
-      best,
-      ahorro: worst.price - best.price,
+      best: sorted[0],
+      worst: sorted[sorted.length - 1],
+      ahorro: sorted[sorted.length - 1].price - sorted[0].price,
     };
   }, [providers]);
 
@@ -68,19 +73,33 @@ export const ProductModal = ({ product, onClose }) => {
       border: "border-gray-300",
     };
 
+  // 🎯 Badge de stock
+  const getStockBadge = (stock) => {
+    if (stock > 20) return "bg-green-100 text-green-800";
+    if (stock > 0) return "bg-yellow-100 text-yellow-800";
+    return "bg-red-100 text-red-800";
+  };
+
+  // 📋 Copiar SKU
   const handleCopySku = async () => {
-    await navigator.clipboard.writeText(product.sku);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(product.sku);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error("Error copiando SKU", err);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
+      <div
+        className={`bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-xl border ${bestStyle.border}`}
+      >
         {/* HEADER */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
-            {/* 🏷 Proveedor ganador */}
+            {/* Proveedor */}
             {best && (
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${bestStyle.badge}`}
@@ -89,10 +108,11 @@ export const ProductModal = ({ product, onClose }) => {
               </span>
             )}
 
-            {/* 🏆 Mejor precio */}
-            {best && (
+            {/* Mejor precio SOLO si hay +1 proveedor */}
+            {providers.length > 1 && (
               <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 flex items-center gap-1">
-                <Trophy size={14} /> Mejor precio
+                <Trophy size={14} />
+                Mejor precio
               </span>
             )}
           </div>
@@ -125,31 +145,47 @@ export const ProductModal = ({ product, onClose }) => {
             {/* SKU */}
             <div className="flex items-center gap-2 mb-5">
               <span className="text-sm text-gray-600">SKU</span>
-              <span className="px-3 py-1 bg-gray-100 rounded-md font-mono">
+              <span className="px-3 py-1 bg-gray-100 rounded-md font-mono text-sm">
                 {product.sku}
               </span>
-              <button onClick={handleCopySku}>
+              <button
+                onClick={handleCopySku}
+                className="p-1.5 rounded-md hover:bg-gray-100"
+              >
                 {copied ? (
                   <Check size={16} className="text-green-600" />
                 ) : (
-                  <Copy size={16} />
+                  <Copy size={16} className="text-gray-600" />
                 )}
               </button>
             </div>
 
-            {/* PRECIO MEJOR */}
-            {best && (
+            {/* MEJOR PRECIO */}
+            {best && providers.length > 1 && (
               <div className="mb-4 p-4 rounded-xl bg-green-50 border border-green-200">
                 <p className="text-sm text-green-700 flex items-center gap-1">
-                  <Trophy size={14} /> Mejor precio disponible
+                  <Trophy size={14} />
+                  Mejor precio disponible
                 </p>
+
                 <p className="text-3xl font-bold">
                   USD{" "}
                   {best.price.toLocaleString("es-AR", {
                     minimumFractionDigits: 2,
                   })}
                 </p>
-                <p className="text-sm text-gray-600">+ IVA {best.iva}</p>
+
+                <p className="text-sm text-gray-600 mb-2">
+                  + IVA {best.iva}
+                </p>
+
+                <span
+                  className={`inline-block px-3 py-1 rounded-md text-sm font-medium ${getStockBadge(
+                    best.stockTotal
+                  )}`}
+                >
+                  Disponible · {best.stockTotal} unidades
+                </span>
               </div>
             )}
 
@@ -179,7 +215,7 @@ export const ProductModal = ({ product, onClose }) => {
                     return (
                       <div
                         key={p.provider}
-                        className={`flex items-center justify-between p-3 rounded-lg border ${
+                        className={`flex items-center justify-between gap-4 p-3 rounded-lg border ${
                           isBest
                             ? "border-green-400 bg-green-50"
                             : style.border
@@ -191,11 +227,19 @@ export const ProductModal = ({ product, onClose }) => {
                           {p.provider}
                         </span>
 
-                        <span className="font-semibold">
+                        <span className="font-semibold whitespace-nowrap">
                           USD{" "}
                           {p.price.toLocaleString("es-AR", {
                             minimumFractionDigits: 2,
                           })}
+                        </span>
+
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${getStockBadge(
+                            p.stockTotal
+                          )}`}
+                        >
+                          Stock: {p.stockTotal} un.
                         </span>
 
                         {p.link && (

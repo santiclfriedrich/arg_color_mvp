@@ -81,17 +81,30 @@ if (corcisa.status === "fulfilled") {
     );
 
     // FILTRO unificado: nombre + SKU + codigo_producto + partNumber
-    if (q) {
-      const qLower = q.toLowerCase();
+// FILTRO flexible por palabras (NO estricto)
+  if (q) {
+    const terms = q
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
 
-      allProducts = allProducts.filter((p) => {
-        return (
-          p.name?.toLowerCase().includes(qLower) ||
-          p.sku?.toLowerCase() === qLower ||
-          p.sku?.toLowerCase().includes(qLower)
-        );
-      });
-    }
+    allProducts = allProducts.filter((p) => {
+      const haystack = `
+        ${p.name || ""}
+        ${p.brand || ""}
+        ${p.sku || ""}
+      `.toLowerCase();
+
+      // 🔹 si es SKU exacto → match directo
+      if (terms.length === 1 && p.sku?.toLowerCase() === terms[0]) {
+        return true;
+      }
+
+      // 🔹 al menos UNA palabra debe coincidir
+      return terms.some((term) => haystack.includes(term));
+    });
+  }
+
 
     const elapsed = ((Date.now() - start) / 1000).toFixed(2);
     console.log(`✅ Búsqueda completada en ${elapsed}s — Total: ${allProducts.length}`);
