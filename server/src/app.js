@@ -11,23 +11,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ---------------- API ----------------
+app.use("/api/products", productRoutes);
+
+// ---------------- FRONTEND ----------------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
-// Rutas principales
-app.use("/api/products", productRoutes);
-
+// Servir archivos estáticos del build de React
 app.use(
   express.static(path.join(__dirname, "../../client/dist"))
 );
 
-// Catch-all para React Router
-app.get("*", (req, res) => {
+// Catch-all para React Router (Express 5 compatible)
+app.get("/*", (req, res) => {
   res.sendFile(
     path.join(__dirname, "../../client/dist/index.html")
   );
 });
 
 export default app;
-
