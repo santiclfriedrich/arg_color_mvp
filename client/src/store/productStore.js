@@ -11,13 +11,13 @@ export const useProductStore = create((set, get) => ({
 
   fetchProducts: async () => {
     const query = get().query;
-    if (!query || query.trim().length < 3) return;
+    if (!query || query.trim().length < 2) return;
 
     set({ loading: true, error: null });
 
     try {
       const res = await fetch(
-        `http://localhost:3000/api/products?q=${encodeURIComponent(query)}`
+        `/api/products?q=${encodeURIComponent(query.trim())}`
       );
 
       if (!res.ok) throw new Error("Error backend");
