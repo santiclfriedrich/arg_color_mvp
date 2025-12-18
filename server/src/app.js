@@ -18,13 +18,13 @@ app.use("/api/products", productRoutes);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Servir archivos estáticos del build de React
+// Servir build de React
 app.use(
   express.static(path.join(__dirname, "../../client/dist"))
 );
 
-// Catch-all para React Router (Express 5 compatible)
-app.get("/*", (req, res) => {
+// Catch-all SPA (EXPRESS 5 COMPATIBLE)
+app.get(/.*/, (req, res) => {
   res.sendFile(
     path.join(__dirname, "../../client/dist/index.html")
   );
