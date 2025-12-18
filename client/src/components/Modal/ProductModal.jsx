@@ -32,6 +32,7 @@ export const ProductModal = ({ product, onClose }) => {
     if (providers.length < 2) {
       return { best: providers[0], ahorro: 0 };
     }
+
     const sorted = [...providers].sort((a, b) => a.price - b.price);
     return {
       best: sorted[0],
@@ -39,14 +40,14 @@ export const ProductModal = ({ product, onClose }) => {
     };
   }, [providers]);
 
-  if (!product) return null;
+  if (!product || !best) return null;
 
   const imageUrl =
     product.image ||
     "https://via.placeholder.com/400x300?text=Sin+Imagen";
 
   const bestStyle =
-    PROVIDER_STYLES[best?.provider] || {
+    PROVIDER_STYLES[best.provider] || {
       badge: "bg-gray-100 text-gray-700",
     };
 
@@ -72,20 +73,18 @@ export const ProductModal = ({ product, onClose }) => {
   return (
     <div
       className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-      onClick={onClose}   // 👈 click afuera cierra
+      onClick={onClose}
     >
       <div
         className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-xl"
-        onClick={(e) => e.stopPropagation()} // 👈 click dentro NO cierra
+        onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
         <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2">
-            {best && (
-              <span className={`px-3 py-1 rounded-full text-sm ${bestStyle.badge}`}>
-                {best.provider}
-              </span>
-            )}
+            <span className={`px-3 py-1 rounded-full text-sm ${bestStyle.badge}`}>
+              {best.provider}
+            </span>
 
             {providers.length > 1 && (
               <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 flex items-center gap-1">
@@ -130,34 +129,32 @@ export const ProductModal = ({ product, onClose }) => {
               </button>
             </div>
 
-            {/* MEJOR PRECIO */}
-            {providers.length > 1 && best && (
-              <div className="mb-4 p-4 rounded-xl bg-green-50 border border-green-300">
-                {/* 👆 borde verde agregado */}
-                <p className="text-sm text-green-700 flex items-center gap-1">
-                  <Trophy size={14} /> Mejor precio disponible
-                </p>
+            {/* CARD DE PRECIO — SIEMPRE VERDE */}
+            <div className="mb-4 p-4 rounded-xl bg-green-50 border border-green-300">
+              <p className="text-sm text-green-700 flex items-center gap-1">
+                <Trophy size={14} />
+                Mejor precio disponible
+              </p>
 
-                <p className="text-3xl font-bold">
-                  USD{" "}
-                  {best.price.toLocaleString("es-AR", {
-                    minimumFractionDigits: 2,
-                  })}
-                </p>
+              <p className="text-3xl font-bold">
+                USD{" "}
+                {best.price.toLocaleString("es-AR", {
+                  minimumFractionDigits: 2,
+                })}
+              </p>
 
-                <p className="text-sm text-gray-600 mb-2">
-                  + IVA {best.iva}
-                </p>
+              <p className="text-sm text-gray-600 mb-2">
+                + IVA {best.iva}
+              </p>
 
-                <span
-                  className={`px-3 py-1 rounded-md text-sm ${stockBadge(
-                    best.stockTotal
-                  )}`}
-                >
-                  Disponible · {best.stockTotal} unidades
-                </span>
-              </div>
-            )}
+              <span
+                className={`px-3 py-1 rounded-md text-sm ${stockBadge(
+                  best.stockTotal
+                )}`}
+              >
+                Disponible · {best.stockTotal} unidades
+              </span>
+            </div>
 
             {ahorro > 0 && (
               <p className="text-green-700 text-sm flex items-center gap-1">
@@ -171,7 +168,7 @@ export const ProductModal = ({ product, onClose }) => {
           </div>
         </div>
 
-        {/* COMPARATIVA */}
+        {/* COMPARATIVA — INTACTA */}
         {providers.length > 1 && (
           <div className="px-6 pb-6">
             <h3 className="font-semibold mb-3">
@@ -223,7 +220,9 @@ export const ProductModal = ({ product, onClose }) => {
                           minimumFractionDigits: 2,
                         })}
                       </p>
-                      <p className="text-xs text-gray-500">+ IVA {p.iva}</p>
+                      <p className="text-xs text-gray-500">
+                        + IVA {p.iva}
+                      </p>
                     </div>
 
                     <div className="min-w-[90px] text-right">
@@ -263,7 +262,7 @@ export const ProductModal = ({ product, onClose }) => {
             Cerrar
           </button>
 
-          {best?.link && (
+          {best.link && (
             <a
               href={best.link}
               target="_blank"
